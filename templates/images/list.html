@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>All Images</h2>
+<div class="row">
+    {% for image in images %}
+    <div class="col-md-3 mb-3">
+        <div class="card">
+            <img src="{{ image.file.url }}" class="card-img-top" style="height: 200px; object-fit: cover;">
+            <div class="card-body">
+                <p class="card-text small">{{ image.title|default:image.original_filename }}</p>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <p>No images available.</p>
+    {% endfor %}
+</div>
+{% endblock %}

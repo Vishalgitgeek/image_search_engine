@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>{{ image.title|default:image.original_filename }}</h2>
+<img src="{{ image.file.url }}" class="img-fluid" style="max-height: 400px;">
+<p class="mt-3">Uploaded: {{ image.uploaded_at }}</p>
+<a href="{% url 'images:list' %}" class="btn btn-secondary">Back to List</a>
+{% endblock %}

@@ -1,0 +1,230 @@
+<!-- templates/search/results.html -->
+{% extends 'base.html' %}
+
+{% block title %}Search Results - Image Search Engine{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <!-- Query Image Section -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0">
+                    <i class="bi bi-search"></i> Your Search Query
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <img src="{{ search_data.query_image.file.url }}" 
+                             class="query-image" 
+                             alt="Query Image">
+                    </div>
+                    <div class="col-md-9">
+                        <h5>Search Parameters</h5>
+                        <ul class="list-unstyled">
+                            <li><strong>Similarity Threshold:</strong> {{ search_data.threshold_used|floatformat:1 }}%</li>
+                            <li><strong>Maximum Results:</strong> {{ search_data.max_results }}</li>
+                            <li><strong>Search Time:</strong> {{ search_data.search_time|floatformat:3 }}s</li>
+                            <li><strong>Total Candidates:</strong> {{ search_data.total_candidates }}</li>
+                            <li><strong>Results Found:</strong> {{ search_data.results|length }}</li>
+                        </ul>
+                        
+                        <!-- Action Buttons -->
+                        <div class="mt-3">
+                            <a href="{% url 'core:index' %}" class="btn btn-primary">
+                                <i class="bi bi-search"></i> New Search
+                            </a>
+                            <button class="btn btn-outline-secondary" onclick="window.history.back()">
+                                <i class="bi bi-arrow-left"></i> Back
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        {% if search_data.results %}
+            <div class="search-results">
+                <h3 class="mb-4">
+                    Similar Images Found ({{ search_data.results|length }} results)
+                </h3>
+                
+                <!-- Sort Options -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary active" onclick="sortResults('similarity')">
+                                <i class="bi bi-sort-numeric-down"></i> By Similarity
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="sortResults('date')">
+                                <i class="bi bi-calendar"></i> By Date
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary active" onclick="setViewMode('grid')">
+                                <i class="bi bi-grid"></i> Grid
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="setViewMode('list')">
+                                <i class="bi bi-list"></i> List
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Results Grid -->
+                <div class="row" id="results-container">
+                    {% for image, score in search_data.results %}
+                    <div class="col-lg-3 col-md-4 col-sm-6 mb-4 result-item" 
+                         data-similarity="{{ score }}" 
+                         data-date="{{ image.uploaded_at.isoformat }}">
+                        <div class="card image-card h-100">
+                            <!-- Similarity Score Badge -->
+                            <div class="similarity-score">
+                                {{ score|floatformat:1 }}%
+                            </div>
+                            
+                            <!-- Image -->
+                            <img src="{{ image.file.url }}" 
+                                 class="card-img-top" 
+                                 alt="{{ image.title }}"
+                                 onclick="openImageModal('{{ image.file.url }}', '{{ image.title }}', '{{ score|floatformat:3 }}')">
+                            
+                            <!-- Card Body -->
+                            <div class="card-body">
+                                <h6 class="card-title">{{ image.title|default:image.original_filename|truncatechars:30 }}</h6>
+                                <p class="card-text small text-muted">
+                                    <i class="bi bi-calendar3"></i> {{ image.uploaded_at|date:"M d, Y" }}<br>
+                                    <i class="bi bi-aspect-ratio"></i> {{ image.aspect_ratio }}<br>
+                                    <i class="bi bi-file-earmark"></i> {{ image.file_size_mb }} MB
+                                </p>
+                                
+                                <!-- Action Buttons -->
+                                <div class="btn-group btn-group-sm w-100" role="group">
+                                    <a href="{{ image.file.url }}" target="_blank" class="btn btn-outline-primary">
+                                        <i class="bi bi-eye"></i> View
+                                    </a>
+                                    <a href="{% url 'search:similar' image.id %}" class="btn btn-outline-success">
+                                        <i class="bi bi-search"></i> Find Similar
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% else %}
+            <!-- No Results -->
+            <div class="text-center mt-5">
+                <i class="bi bi-search display-1 text-muted mb-3"></i>
+                <h3>No Similar Images Found</h3>
+                <p class="text-muted">Try lowering the similarity threshold or upload a different image.</p>
+                
+                <div class="mt-4">
+                    <a href="{% url 'core:index' %}" class="btn btn-primary me-2">
+                        <i class="bi bi-search"></i> Try Another Search
+                    </a>
+                    <a href="{% url 'core:gallery' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-grid"></i> Browse Gallery
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalTitle"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img src="" id="imageModalImg" class="img-fluid" alt="">
+                <p class="mt-3">
+                    <strong>Similarity Score: <span id="imageModalScore"></span></strong>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Image modal functionality
+function openImageModal(imageUrl, title, score) {
+    document.getElementById('imageModalImg').src = imageUrl;
+    document.getElementById('imageModalTitle').textContent = title || 'Image';
+    document.getElementById('imageModalScore').textContent = (parseFloat(score) * 100).toFixed(1) + '%';
+    
+    const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+    modal.show();
+}
+
+// Sort functionality
+function sortResults(sortBy) {
+    const container = document.getElementById('results-container');
+    const items = Array.from(container.getElementsByClassName('result-item'));
+    
+    // Update button states
+    document.querySelectorAll('.btn-group button').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    items.sort((a, b) => {
+        if (sortBy === 'similarity') {
+            return parseFloat(b.dataset.similarity) - parseFloat(a.dataset.similarity);
+        } else if (sortBy === 'date') {
+            return new Date(b.dataset.date) - new Date(a.dataset.date);
+        }
+        return 0;
+    });
+    
+    // Reorder DOM elements
+    items.forEach(item => container.appendChild(item));
+}
+
+// View mode functionality
+function setViewMode(mode) {
+    const container = document.getElementById('results-container');
+    const items = document.getElementsByClassName('result-item');
+    
+    // Update button states
+    document.querySelectorAll('.btn-group button').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    if (mode === 'list') {
+        Array.from(items).forEach(item => {
+            item.className = 'col-12 mb-3 result-item';
+        });
+    } else {
+        Array.from(items).forEach(item => {
+            item.className = 'col-lg-3 col-md-4 col-sm-6 mb-4 result-item';
+        });
+    }
+}
+
+// Lazy loading for images
+document.addEventListener('DOMContentLoaded', function() {
+    const images = document.querySelectorAll('img[data-src]');
+    const imageObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const img = entry.target;
+                img.src = img.dataset.src;
+                img.classList.remove('lazy');
+                imageObserver.unobserve(img);
+            }
+        });
+    });
+    
+    images.forEach(img => imageObserver.observe(img));
+});
+</script>
+{% endblock %}

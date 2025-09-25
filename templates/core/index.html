@@ -1,0 +1,169 @@
+<!-- templates/core/index.html -->
+{% extends 'base.html' %}
+
+{% block title %}Home - Image Search Engine{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto text-center">
+        <h1 class="display-4 mb-4">Find Similar Images</h1>
+        <p class="lead mb-5">Upload an image and discover visually similar images from our database using advanced deep learning technology.</p>
+        
+        <!-- Upload Form -->
+        <form method="post" action="{% url 'search:search' %}" enctype="multipart/form-data" onsubmit="showLoading()">
+            {% csrf_token %}
+            
+            <div class="upload-area mb-4" id="upload-area">
+                <i class="bi bi-cloud-upload display-1 text-muted mb-3"></i>
+                <h4>Drop your image here</h4>
+                <p class="text-muted">Or click to browse</p>
+                <input type="file" class="form-control" id="file-input" name="query_image" 
+                       accept="image/jpeg,image/jpg,image/png" required style="display: none;">
+                <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('file-input').click();">
+                    <i class="bi bi-folder2-open"></i> Choose Image
+                </button>
+                <div id="file-name" class="mt-2 text-success"></div>
+            </div>
+            
+            <!-- Search Options -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <label for="similarity_threshold" class="form-label">Similarity Threshold</label>
+                    <select class="form-select" id="similarity_threshold" name="similarity_threshold">
+                        <option value="0.5">Low (50%) - More results</option>
+                        <option value="0.7" selected>Medium (70%) - Balanced</option>
+                        <option value="0.8">High (80%) - Similar only</option>
+                        <option value="0.9">Very High (90%) - Nearly identical</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label for="max_results" class="form-label">Maximum Results</label>
+                    <select class="form-select" id="max_results" name="max_results">
+                        <option value="10">10 results</option>
+                        <option value="20" selected>20 results</option>
+                        <option value="50">50 results</option>
+                        <option value="100">100 results</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-search"></i> Search Similar Images
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Statistics Section -->
+<div class="row mt-5">
+    <div class="col-md-12">
+        <div class="card bg-light">
+            <div class="card-body text-center">
+                <div class="row">
+                    <div class="col-md-4">
+                        <h3 class="text-primary">{{ total_images|default:0 }}</h3>
+                        <p class="text-muted">Images in Database</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h3 class="text-success">{{ processed_images|default:0 }}</h3>
+                        <p class="text-muted">Images Processed</p>
+                    </div>
+                    <div class="col-md-4">
+                        <h3 class="text-info">{{ recent_searches|default:0 }}</h3>
+                        <p class="text-muted">Recent Searches</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sample Images Section -->
+{% if sample_images %}
+<div class="row mt-5">
+    <div class="col-md-12">
+        <h3 class="text-center mb-4">Try searching with these sample images</h3>
+        <div class="row">
+            {% for image in sample_images %}
+            <div class="col-md-3 mb-4">
+                <div class="card image-card">
+                    <img src="{{ image.file.url }}" class="card-img-top" alt="{{ image.title }}">
+                    <div class="card-body text-center">
+                        <a href="{% url 'search:similar' image.id %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-search"></i> Find Similar
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- How it works section -->
+<div class="row mt-5">
+    <div class="col-md-12">
+        <h3 class="text-center mb-4">How It Works</h3>
+        <div class="row">
+            <div class="col-md-4 text-center">
+                <div class="mb-3">
+                    <i class="bi bi-upload display-4 text-primary"></i>
+                </div>
+                <h5>1. Upload Image</h5>
+                <p class="text-muted">Upload your query image (JPG, PNG up to 2MB)</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="mb-3">
+                    <i class="bi bi-cpu display-4 text-success"></i>
+                </div>
+                <h5>2. AI Analysis</h5>
+                <p class="text-muted">Our ResNet50 model extracts visual features</p>
+            </div>
+            <div class="col-md-4 text-center">
+                <div class="mb-3">
+                    <i class="bi bi-grid display-4 text-info"></i>
+                </div>
+                <h5>3. Find Matches</h5>
+                <p class="text-muted">Get similar images ranked by similarity score</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Show file name when selected
+document.getElementById('file-input').addEventListener('change', function(e) {
+    const fileName = e.target.files[0]?.name;
+    if (fileName) {
+        document.getElementById('file-name').innerHTML = 
+            '<i class="bi bi-check-circle text-success"></i> ' + fileName;
+    }
+});
+
+// File validation
+document.getElementById('file-input').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        // Check file size (2MB limit)
+        if (file.size > 2 * 1024 * 1024) {
+            alert('File size must be less than 2MB');
+            this.value = '';
+            document.getElementById('file-name').textContent = '';
+            return;
+        }
+        
+        // Check file type
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+        if (!allowedTypes.includes(file.type)) {
+            alert('Only JPG, JPEG, and PNG files are allowed');
+            this.value = '';
+            document.getElementById('file-name').textContent = '';
+            return;
+        }
+    }
+});
+</script>
+{% endblock %}

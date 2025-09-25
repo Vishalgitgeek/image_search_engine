@@ -1,0 +1,13 @@
+django
+Pillow
+torch
+torchvision
+numpy
+scikit-learn
+python-decouple
+django-crispy-forms
+crispy-bootstrap4
+celery
+redis
+psycopg2-binary
+setuptools

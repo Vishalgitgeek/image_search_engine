@@ -14,5 +14,5 @@ A Django-based image similarity search engine using pre-trained deep learning mo
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/image-search-engine.git
+git clone https://github.com/Vishalgitgeek/image-search-engine.git
 cd image-search-engine
